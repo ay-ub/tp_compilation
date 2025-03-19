@@ -12,21 +12,18 @@ def load_excel_values(file_path, sheet_name="Sheet1"):
     for row in sheet.iter_rows(min_row=1, max_row=sheet.max_row, min_col=1, max_col=sheet.max_column):
         for cell in row:
             if cell.value is not None:
-                cell_values[cell.coordinate] = cell.value  # Example: {"A1": 10, "B2": 5}
+                cell_values[cell.coordinate] = cell.value  # Ex: {"A1": 10, "B2": 5}
     
     return cell_values
 
-# Load the Excel file
 cell_values = load_excel_values("data.xlsx")
 
-# Operator precedence
 precedence = (
     ('left', 'PLUS', 'MINUS'),
     ('left', 'TIMES', 'DIVIDE'),
     ('right', 'POWER')
 )
 
-# Rules for arithmetic operations
 def p_expression_binop(p):
     """expression : expression PLUS expression
                   | expression MINUS expression
@@ -81,67 +78,6 @@ def p_range(p):
         p[0] = [cell_values.get(p[1].upper(), 0)]
 
 # Handle Excel functions
-# def p_expression_function(p):
-#     """expression : SUM LPAREN arguments RPAREN
-#                   | AVERAGE LPAREN arguments RPAREN
-#                   | COUNT LPAREN arguments RPAREN
-#                   | MAX LPAREN arguments RPAREN
-#                   | MIN LPAREN arguments RPAREN
-#                   | UNIQUE LPAREN arguments RPAREN
-#                   | TODAY LPAREN RPAREN
-#                   | NOW LPAREN RPAREN
-#                   | YEAR LPAREN expression RPAREN
-#                   | MONTH LPAREN expression RPAREN
-#                   | DAY LPAREN expression RPAREN
-#                   | CONCATENATE LPAREN arguments RPAREN
-#                   | LEFT LPAREN expression COMMA NUMBER RPAREN
-#                   | RIGHT LPAREN expression COMMA NUMBER RPAREN
-#                   | MID LPAREN expression COMMA NUMBER COMMA NUMBER RPAREN
-#                   | LEN LPAREN expression RPAREN
-#                   | LOWER LPAREN expression RPAREN
-#                   | UPPER LPAREN expression RPAREN
-#                   | TRIM LPAREN expression RPAREN"""
-#     func = p[1].lower()
-#     if func in ["sum", "average", "count", "max", "min", "unique"]:
-#         values = p[3]  # List of values
-#         if func == "sum":
-#             p[0] = sum(values)
-#         elif func == "average":
-#             p[0] = sum(values) / len(values) if values else 0
-#         elif func == "count":
-#             p[0] = len(values)
-#         elif func == "max":
-#             p[0] = max(values) if values else None
-#         elif func == "min":
-#             p[0] = min(values) if values else None
-#         elif func == "unique":
-#             p[0] = list(set(values))
-#     elif func == "today":
-#         p[0] = datetime.today().date()
-#     elif func == "now":
-#         p[0] = datetime.now()
-#     elif func == "year":
-#         p[0] = p[3].year if isinstance(p[3], datetime) else None
-#     elif func == "month":
-#         p[0] = p[3].month if isinstance(p[3], datetime) else None
-#     elif func == "day":
-#         p[0] = p[3].day if isinstance(p[3], datetime) else None
-#     elif func == "concatenate":
-#         p[0] = ''.join(str(arg) for arg in p[3])
-#     elif func == "left":
-#         p[0] = p[3][:int(p[5])]
-#     elif func == "right":
-#         p[0] = p[3][-int(p[5]):]
-#     elif func == "mid":
-#         p[0] = p[3][int(p[5])-1:int(p[5])-1+int(p[7])]
-#     elif func == "len":
-#         p[0] = len(p[3])
-#     elif func == "lower":
-#         p[0] = p[3].lower()
-#     elif func == "upper":
-#         p[0] = p[3].upper()
-#     elif func == "trim":
-#         p[0] = p[3].strip()
 
 def p_expression_function(p):
     """expression : SUM LPAREN arguments RPAREN

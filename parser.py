@@ -232,46 +232,52 @@ parser = yacc.yacc()
 if __name__ == "__main__":
 
     while True : 
-        print("""--- Menu --- \n 
-              1. Display supported functions \n 
-              2. Enter an Excel expression \n 
-              3. Exit \n""")
+        print("""--- Menu --- 
+              1. Display supported functions 
+              2. Enter an Excel expression 
+              3. Exit """)
         choice = int(input("Enter your choice: "))
         if choice == 1:
-            print("""Supported functions:
-                  \n--- Arithmetic Functions ---
-                  \n- SUM(range): Calculates the sum of values in a range.
-                  \n- AVERAGE(range): Computes the average of values in a range.
-                  \n- COUNT(range): Counts the number of values in a range.
-                  \n- MAX(range): Finds the maximum value in a range.
-                  \n- MIN(range): Finds the minimum value in a range.
-                  \n- UNIQUE(range): Extracts unique values from a range.
-                  \n--- Date and Time Functions ---
-                  \n- TODAY(): Returns today's date.
-                  \n- NOW(): Returns the current date and time.
-                  \n- YEAR(date): Extracts the year from a given date.
-                  \n- MONTH(date): Extracts the month from a given date.
-                  \n- DAY(date): Extracts the day from a given date.
-                  \n--- Text Functions ---
-                  \n- CONCATENATE(text1, text2, ...): Concatenates text strings.
-                  \n- LEFT(text, num_chars): Extracts the left part of a text string.
-                  \n- RIGHT(text, num_chars): Extracts the right part of a text string.
-                  \n- MID(text, start_num, num_chars): Extracts a substring from the middle of a text string.
-                  \n- LEN(text): Returns the length of a text string.
-                  \n- LOWER(text): Converts text to lowercase.
-                  \n- UPPER(text): Converts text to uppercase.
-                  \n- TRIM(text): Removes extra spaces from text.
-                  \n- FIND(find_text, within_text, [start_num]): Finds the position of a text within another text (case-sensitive).
-                  \n- SEARCH(find_text, within_text, [start_num]): Finds the position of a text within another text (case-insensitive).
-                  \n- REPLACE(old_text, start_num, num_chars, new_text): Replaces part of a text with another text.
-                  \n- SUBSTITUTE(text, old_text, new_text, [instance_num]): Replaces specific text within a string.
-                  \n- TEXT(value, format_text): Converts a value to text with a specified format.
-                  \n- VALUE(text): Converts text to a numeric value.
-                  \n- PROPER(text): Converts text to proper case (first letter of each word capitalized).
-                  \n- REPT(text, number_times): Repeats text a specified number of times.
-                  \n- EXACT(text1, text2): Compares two text strings to check if they are exactly the same (case-sensitive).
-                  \n- CHAR(number): Returns the character corresponding to an ASCII code.
-                  \n- CODE(text): Returns the ASCII code of the first character in a text string.""")
+         print("""Supported functions:
+                --- Arithmetic Functions ---
+                                
+                1) SUM(range): Calculates the sum of values in a range.
+                2) AVERAGE(range): Computes the average of values in a range.
+                3) COUNT(range): Counts the number of values in a range.
+                4) MAX(range): Finds the maximum value in a range.
+                5) MIN(range): Finds the minimum value in a range.
+                6) UNIQUE(range): Extracts unique values from a range.
+
+                --- Date and Time Functions ---
+                                
+                7) TODAY(): Returns today's date.
+                8) NOW(): Returns the current date and time.
+                9) YEAR(date): Extracts the year from a given date.
+                10) MONTH(date): Extracts the month from a given date.
+                11) DAY(date): Extracts the day from a given date.
+
+                --- Text Functions ---
+                                
+                12) CONCATENATE(text1, text2, ...): Concatenates text strings.
+                13) LEFT(text, num_chars): Extracts the left part of a text string.
+                14) RIGHT(text, num_chars): Extracts the right part of a text string.
+                15) MID(text, start_num, num_chars): Extracts a substring from the middle of a text string.
+                16) LEN(text): Returns the length of a text string.
+                17) LOWER(text): Converts text to lowercase.
+                18) UPPER(text): Converts text to uppercase.
+                19) TRIM(text): Removes extra spaces from text.
+                20) FIND(find_text, within_text, [start_num]): Finds the position of a text within another text (case-sensitive).
+                21) SEARCH(find_text, within_text, [start_num]): Finds the position of a text within another text (case-insensitive).
+                22) REPLACE(old_text, start_num, num_chars, new_text): Replaces part of a text with another text.
+                23) SUBSTITUTE(text, old_text, new_text, [instance_num]): Replaces specific text within a string.
+                24) TEXT(value, format_text): Converts a value to text with a specified format.
+                25) VALUE(text): Converts text to a numeric value.
+                26) PROPER(text): Converts text to proper case (first letter of each word capitalized).
+                27) REPT(text, number_times): Repeats text a specified number of times.
+                28) EXACT(text1, text2): Compares two text strings to check if they are exactly the same (case-sensitive).
+                29) CHAR(number): Returns the character corresponding to an ASCII code.
+                30) CODE(text): Returns the ASCII code of the first character in a text string.""")
+
         elif choice == 2:
             while True:
                 try:

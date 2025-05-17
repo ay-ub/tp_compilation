@@ -28,6 +28,16 @@ precedence = (
     ('right', 'POWER')
 )
 
+def flatten_list(lst):
+    """Flatten nested lists and convert all values to numbers"""
+    result = []
+    for item in lst:
+        if isinstance(item, list):
+            result.extend(flatten_list(item))
+        else:
+            result.append(float(item) if isinstance(item, (int, float)) else item)
+    return result
+
 def p_expression_binop(p):
     """expression : expression PLUS expression
                   | expression MINUS expression
@@ -35,24 +45,29 @@ def p_expression_binop(p):
                   | expression DIVIDE expression
                   | expression POWER expression"""
     temp = quad_gen.new_temp()
+    # Convert lists to single values if needed
+    left = sum(flatten_list([p[1]])) if isinstance(p[1], list) else p[1]
+    right = sum(flatten_list([p[3]])) if isinstance(p[3], list) else p[3]
+    
     if p[2] == '+':
-        p[0] = p[1] + p[3]
-        quad_gen.emit('+', str(p[1]), str(p[3]), temp)
+        p[0] = left + right
+        quad_gen.emit('+', str(left), str(right), temp)
     elif p[2] == '-':
-        p[0] = p[1] - p[3]
-        quad_gen.emit('-', str(p[1]), str(p[3]), temp)
+        p[0] = left - right
+        quad_gen.emit('-', str(left), str(right), temp)
     elif p[2] == '*':
-        p[0] = p[1] * p[3]
-        quad_gen.emit('*', str(p[1]), str(p[3]), temp)
+        p[0] = left * right
+        quad_gen.emit('*', str(left), str(right), temp)
     elif p[2] == '/':
-        if p[3] != 0:
-            p[0] = p[1] / p[3]
-            quad_gen.emit('/', str(p[1]), str(p[3]), temp)
+        if right != 0:
+            p[0] = left / right
+            quad_gen.emit('/', str(left), str(right), temp)
         else:
             print("error: Cannot divide by zero")
+            p[0] = None
     elif p[2] == '^':
-        p[0] = p[1] ** p[3]
-        quad_gen.emit('^', str(p[1]), str(p[3]), temp)
+        p[0] = left ** right
+        quad_gen.emit('^', str(left), str(right), temp)
 
 def p_expression_parens(p):
     "expression : LPAREN expression RPAREN"
@@ -136,20 +151,29 @@ def p_expression_function(p):
                   | CHAR LPAREN NUMBER RPAREN
                   | CODE LPAREN expression RPAREN"""
     func = p[1].lower()
+    temp = quad_gen.new_temp()
+    
     if func in ["sum", "average", "count", "max", "min", "unique"]:
-        values = p[3]  # List of values
+        values = flatten_list(p[3])  # Flatten nested lists
         if func == "sum":
-            p[0] = sum(values)
+            result = sum(values)
+            quad_gen.emit('sum', str(values), '_', temp)
         elif func == "average":
-            p[0] = sum(values) / len(values) if values else 0
+            result = sum(values) / len(values) if values else 0
+            quad_gen.emit('avg', str(values), '_', temp)
         elif func == "count":
-            p[0] = len(values)
+            result = len(values)
+            quad_gen.emit('count', str(values), '_', temp)
         elif func == "max":
-            p[0] = max(values) if values else None
+            result = max(values) if values else None
+            quad_gen.emit('max', str(values), '_', temp)
         elif func == "min":
-            p[0] = min(values) if values else None
+            result = min(values) if values else None
+            quad_gen.emit('min', str(values), '_', temp)
         elif func == "unique":
-            p[0] = list(set(values))
+            result = list(set(values))
+            quad_gen.emit('unique', str(values), '_', temp)
+        p[0] = result
     elif func == "today":
         p[0] = datetime.today().date()
     elif func == "now":

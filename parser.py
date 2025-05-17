@@ -70,8 +70,16 @@ def p_cell_range(p):
     start_col, start_row = start[0], int(start[1:])
     end_col, end_row = end[0], int(end[1:])
     
+    values = []
     if start_col == end_col:  # Single column
-        p[0] = [cell_values.get(f"{start_col}{i}", 0) for i in range(start_row, end_row + 1)]
+        for i in range(start_row, end_row + 1):
+            cell_value = cell_values.get(f"{start_col}{i}", 0)
+            # Handle nested function results
+            if isinstance(cell_value, list):
+                values.extend(cell_value)
+            else:
+                values.append(cell_value)
+        p[0] = values
     else:
         print("Multi-column ranges are not supported yet.")
         p[0] = []
@@ -210,13 +218,17 @@ def p_expression_function(p):
     elif func == "code":
         p[0] = ord(p[3][0]) if p[3] else None
 
-# Function arguments: numbers, cells, ranges, and nested expressions
+# Function arguments handling with better nested function support
 def p_arguments(p):
     """arguments : arguments COMMA expression
                 | expression"""
     if len(p) == 4:
         if isinstance(p[1], list):
-            p[0] = p[1] + [p[3]]
+            if isinstance(p[3], list):
+                # Flatten nested function results
+                p[0] = p[1] + p[3]
+            else:
+                p[0] = p[1] + [p[3]]
         else:
             p[0] = [p[1], p[3]]
     else:

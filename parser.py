@@ -53,29 +53,28 @@ def p_expression_string(p):
     "expression : STRING"
     p[0] = p[1]
 
-# Read an Excel cell
-def p_expression_cell(p):
-    "expression : CELL_REF"
+# Read an Excel cell or range
+def p_expression_cell_or_range(p):
+    """expression : cell_ref 
+                 | cell_range"""
+    p[0] = p[1]
+
+def p_cell_ref(p):
+    "cell_ref : CELL_REF"
     cell = p[1].upper()
     p[0] = cell_values.get(cell, 0)
 
-# Read a range of cells
-def p_range(p):
-    """range : CELL_REF COLON CELL_REF
-             | CELL_REF"""
-    if len(p) == 4:  # Range (e.g., A1:A5)
-        start, end = p[1].upper(), p[3].upper()
-        
-        start_col, start_row = start[0], int(start[1:])
-        end_col, end_row = end[0], int(end[1:])
-        
-        if start_col == end_col:  # Single column
-            p[0] = [cell_values.get(f"{start_col}{i}", 0) for i in range(start_row, end_row + 1)]
-        else:
-            print("Multi-column ranges are not supported yet.")
-            p[0] = []
+def p_cell_range(p):
+    "cell_range : CELL_REF COLON CELL_REF"
+    start, end = p[1].upper(), p[3].upper()
+    start_col, start_row = start[0], int(start[1:])
+    end_col, end_row = end[0], int(end[1:])
+    
+    if start_col == end_col:  # Single column
+        p[0] = [cell_values.get(f"{start_col}{i}", 0) for i in range(start_row, end_row + 1)]
     else:
-        p[0] = [cell_values.get(p[1].upper(), 0)]
+        print("Multi-column ranges are not supported yet.")
+        p[0] = []
 
 # Handle Excel functions
 
@@ -214,12 +213,17 @@ def p_expression_function(p):
 # Function arguments: numbers, cells, ranges, and nested expressions
 def p_arguments(p):
     """arguments : arguments COMMA expression
-                 | range
-                 | expression"""
+                | expression"""
     if len(p) == 4:
-        p[0] = p[1] + [p[3]]
+        if isinstance(p[1], list):
+            p[0] = p[1] + [p[3]]
+        else:
+            p[0] = [p[1], p[3]]
     else:
-        p[0] = p[1] if isinstance(p[1], list) else [p[1]]
+        if isinstance(p[1], list):
+            p[0] = p[1]
+        else:
+            p[0] = [p[1]]
 
 # Handle syntax errors
 def p_error(p):

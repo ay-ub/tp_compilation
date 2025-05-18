@@ -2,6 +2,10 @@ import ply.yacc as yacc
 from lexer import tokens
 import openpyxl
 from datetime import datetime
+from quad_generator import QuadGenerator
+
+# Initialize quad generator
+quad_gen = QuadGenerator()
 
 # Load values from an Excel file
 def load_excel_values(file_path, sheet_name="Sheet1"):
@@ -24,22 +28,46 @@ precedence = (
     ('right', 'POWER')
 )
 
+def flatten_list(lst):
+    """Flatten nested lists and convert all values to numbers"""
+    result = []
+    for item in lst:
+        if isinstance(item, list):
+            result.extend(flatten_list(item))
+        else:
+            result.append(float(item) if isinstance(item, (int, float)) else item)
+    return result
+
 def p_expression_binop(p):
     """expression : expression PLUS expression
                   | expression MINUS expression
                   | expression TIMES expression
                   | expression DIVIDE expression
                   | expression POWER expression"""
+    temp = quad_gen.new_temp()
+    # Convert lists to single values if needed
+    left = sum(flatten_list([p[1]])) if isinstance(p[1], list) else p[1]
+    right = sum(flatten_list([p[3]])) if isinstance(p[3], list) else p[3]
+    
     if p[2] == '+':
-        p[0] = p[1] + p[3]
+        p[0] = left + right
+        quad_gen.emit('+', str(left), str(right), temp)
     elif p[2] == '-':
-        p[0] = p[1] - p[3]
+        p[0] = left - right
+        quad_gen.emit('-', str(left), str(right), temp)
     elif p[2] == '*':
-        p[0] = p[1] * p[3]
+        p[0] = left * right
+        quad_gen.emit('*', str(left), str(right), temp)
     elif p[2] == '/':
-        p[0] = p[1] / p[3] if p[3] != 0 else print("error: Cannot divide by zero")
+        if right != 0:
+            p[0] = left / right
+            quad_gen.emit('/', str(left), str(right), temp)
+        else:
+            print("error: Cannot divide by zero")
+            p[0] = None
     elif p[2] == '^':
-        p[0] = p[1] ** p[3]
+        p[0] = left ** right
+        quad_gen.emit('^', str(left), str(right), temp)
 
 def p_expression_parens(p):
     "expression : LPAREN expression RPAREN"
@@ -47,35 +75,47 @@ def p_expression_parens(p):
 
 def p_expression_number(p):
     "expression : NUMBER"
+    temp = quad_gen.new_temp()
+    quad_gen.emit('=', str(p[1]), '_', temp)
     p[0] = p[1]
 
 def p_expression_string(p):
     "expression : STRING"
     p[0] = p[1]
 
-# Read an Excel cell
-def p_expression_cell(p):
-    "expression : CELL_REF"
-    cell = p[1].upper()
-    p[0] = cell_values.get(cell, 0)
+# Read an Excel cell or range
+def p_expression_cell_or_range(p):
+    """expression : cell_ref 
+                 | cell_range"""
+    p[0] = p[1]
 
-# Read a range of cells
-def p_range(p):
-    """range : CELL_REF COLON CELL_REF
-             | CELL_REF"""
-    if len(p) == 4:  # Range (e.g., A1:A5)
-        start, end = p[1].upper(), p[3].upper()
-        
-        start_col, start_row = start[0], int(start[1:])
-        end_col, end_row = end[0], int(end[1:])
-        
-        if start_col == end_col:  # Single column
-            p[0] = [cell_values.get(f"{start_col}{i}", 0) for i in range(start_row, end_row + 1)]
-        else:
-            print("Multi-column ranges are not supported yet.")
-            p[0] = []
+def p_cell_ref(p):
+    "cell_ref : CELL_REF"
+    cell = p[1].upper()
+    value = cell_values.get(cell, 0)
+    temp = quad_gen.new_temp()
+    quad_gen.emit('load', cell, '_', temp)
+    p[0] = value
+
+def p_cell_range(p):
+    "cell_range : CELL_REF COLON CELL_REF"
+    start, end = p[1].upper(), p[3].upper()
+    start_col, start_row = start[0], int(start[1:])
+    end_col, end_row = end[0], int(end[1:])
+    
+    values = []
+    if start_col == end_col:  # Single column
+        for i in range(start_row, end_row + 1):
+            cell_value = cell_values.get(f"{start_col}{i}", 0)
+            # Handle nested function results
+            if isinstance(cell_value, list):
+                values.extend(cell_value)
+            else:
+                values.append(cell_value)
+        p[0] = values
     else:
-        p[0] = [cell_values.get(p[1].upper(), 0)]
+        print("Multi-column ranges are not supported yet.")
+        p[0] = []
 
 # Handle Excel functions
 
@@ -111,20 +151,29 @@ def p_expression_function(p):
                   | CHAR LPAREN NUMBER RPAREN
                   | CODE LPAREN expression RPAREN"""
     func = p[1].lower()
+    temp = quad_gen.new_temp()
+    
     if func in ["sum", "average", "count", "max", "min", "unique"]:
-        values = p[3]  # List of values
+        values = flatten_list(p[3])  # Flatten nested lists
         if func == "sum":
-            p[0] = sum(values)
+            result = sum(values)
+            quad_gen.emit('sum', str(values), '_', temp)
         elif func == "average":
-            p[0] = sum(values) / len(values) if values else 0
+            result = sum(values) / len(values) if values else 0
+            quad_gen.emit('avg', str(values), '_', temp)
         elif func == "count":
-            p[0] = len(values)
+            result = len(values)
+            quad_gen.emit('count', str(values), '_', temp)
         elif func == "max":
-            p[0] = max(values) if values else None
+            result = max(values) if values else None
+            quad_gen.emit('max', str(values), '_', temp)
         elif func == "min":
-            p[0] = min(values) if values else None
+            result = min(values) if values else None
+            quad_gen.emit('min', str(values), '_', temp)
         elif func == "unique":
-            p[0] = list(set(values))
+            result = list(set(values))
+            quad_gen.emit('unique', str(values), '_', temp)
+        p[0] = result
     elif func == "today":
         p[0] = datetime.today().date()
     elif func == "now":
@@ -211,15 +260,24 @@ def p_expression_function(p):
     elif func == "code":
         p[0] = ord(p[3][0]) if p[3] else None
 
-# Function arguments: numbers, cells, ranges, and nested expressions
+# Function arguments handling with better nested function support
 def p_arguments(p):
     """arguments : arguments COMMA expression
-                 | range
-                 | expression"""
+                | expression"""
     if len(p) == 4:
-        p[0] = p[1] + [p[3]]
+        if isinstance(p[1], list):
+            if isinstance(p[3], list):
+                # Flatten nested function results
+                p[0] = p[1] + p[3]
+            else:
+                p[0] = [p[1], p[3]]
+        else:
+            p[0] = [p[1], p[3]]
     else:
-        p[0] = p[1] if isinstance(p[1], list) else [p[1]]
+        if isinstance(p[1], list):
+            p[0] = p[1]
+        else:
+            p[0] = [p[1]]
 
 # Handle syntax errors
 def p_error(p):
@@ -230,15 +288,15 @@ parser = yacc.yacc()
 
 # Interactive testing
 if __name__ == "__main__":
-
-    while True : 
-        print("""--- Menu --- 
-              1. Display supported functions 
-              2. Enter an Excel expression 
-              3. Exit """)
+    while True:
+        print("""--- Menu ---
+              1. Display supported functions
+              2. Enter an Excel expression
+              3. Exit""")
         choice = int(input("Enter your choice: "))
+        
         if choice == 1:
-         print("""Supported functions:
+            print("""Supported functions:
                 --- Arithmetic Functions ---
                                 
                 1) SUM(range): Calculates the sum of values in a range.
@@ -277,15 +335,20 @@ if __name__ == "__main__":
                 28) EXACT(text1, text2): Compares two text strings to check if they are exactly the same (case-sensitive).
                 29) CHAR(number): Returns the character corresponding to an ASCII code.
                 30) CODE(text): Returns the ASCII code of the first character in a text string.""")
-
         elif choice == 2:
             while True:
                 try:
+                    # Reset quadruples for new expression
+                    quad_gen.quads = []
+                    
                     expr = input("Enter an Excel expression: ").strip()
                     if expr.startswith("="):
                         expr = expr[1:]
                     result = parser.parse(expr)
-                    print("Result:", result)
+                    print("\nResult:", result)
+                    
+                    # Display generated quadruples
+                    quad_gen.print_quads()
                 except EOFError:
                     break
         elif choice == 3:
@@ -293,44 +356,4 @@ if __name__ == "__main__":
             break
         else:
             print("Invalid choice. Please try again.")
-
-
-
-# Test expressions for all supported functions:
-# =SUM(1, 2, 3, 4) → 10
-# =AVERAGE(1, 2, 3, 4) → 2.5
-# =COUNT(1, 2, 3, 4) → 4
-# =MAX(1, 2, 3, 4) → 4
-# =MIN(1, 2, 3, 4) → 1
-# =UNIQUE(1, 2, 2, 3, 4, 4) → [1, 2, 3, 4]
-# =TODAY() → Current date (e.g., 2023-10-05)
-# =NOW() → Current date and time (e.g., 2023-10-05 14:30:00)
-# =YEAR("2023-10-05") → 2023
-# =MONTH("2023-10-05") → 10
-# =DAY("2023-10-05") → 5
-# =CONCATENATE("Hello", " ", "World") → "Hello World"
-# =LEFT("Hello World", 5) → "Hello"
-# =RIGHT("Hello World", 5) → "World"
-# =MID("Hello World", 7, 5) → "World"
-# =LEN("Hello World") → 11
-# =LOWER("Hello World") → "hello world"
-# =UPPER("Hello World") → "HELLO WORLD"
-# =TRIM("  Hello World  ") → "Hello World"
-# =FIND("World", "Hello World", 1) → 7                                 
-# =SEARCH("world", "Hello World", 1) → 7                               
-# =REPLACE("Hello World", 7, 5, "Universe") → "Hello Universe"
-# =VALUE("123.45") → 123.45
-# =PROPER("hello world") → "Hello World"
-# =REPT("a", 5) → "aaaaa"
-# =EXACT("Hello", "hello") → False
-# =CHAR(65) → "A"
-# =CODE("A") → 65
-# =A1 → Value of cell A1
-# =1/0 → Error: Cannot divide by zero
-# =SUM(1, 2, AVERAGE(3, 5)) → 7
-# =UPPER(LEFT("Hello World", 5)) → "HELLO"
-# =YEAR(TODAY()) → Current year (e.g., 2023)
-# =SUM(A1:A5) → Sum of values from A1 to A5
-# =UNIQUE(A1:A5) → Unique values from A1 to A5
-# =VALUE("123") + 1 → 124
-# =TEXT(123, "0000") → "0123"
+ 
